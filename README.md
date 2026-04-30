@@ -7,14 +7,14 @@ This repository contains a C++ distributed processing system built with MPI (Mes
 This system implements two distinct parallel algorithms, falling into two categories (Grid/Spatial) and (Data/Computation), satisfying their requirements:
 
 1. **Conway's Game of Life (Category A)**
-    * **Data Distribution:** 2D Cartesian block decomposition using `MPI_Cart_create`.
-    * **Communication:** Halo/Ghost cell exchange with neighboring processes.
-    * **Techniques:** Explores both Blocking (Deadlock scenario) and Non-blocking (`MPI_Isend` / `MPI_Irecv`) communication.
+   * **Data Distribution:** 2D Cartesian block decomposition using `MPI_Cart_create`.
+   * **Communication:** Halo/Ghost cell exchange with neighboring processes.
+   * **Techniques:** Explores both Blocking (Deadlock scenario) and Non-blocking (`MPI_Isend` / `MPI_Irecv`) communication.
 
 2. **Matrix Multiplication (Category B)**
-    * **Data Distribution:** 1D Row-wise decomposition capable of handling **uneven data sizes** (when matrix dimensions are not perfectly divisible by the number of processes).
-    * **Communication:** Pipeline/Ring communication.
-    * **Techniques:** Combines Collective communication (`MPI_Bcast`, `MPI_Scatterv`, `MPI_Gatherv`) with Point-to-Point logical ring shifting.
+   * **Data Distribution:** 1D Row-wise decomposition capable of handling **uneven data sizes** (when matrix dimensions are not perfectly divisible by the number of processes).
+   * **Communication:** Pipeline/Ring communication.
+   * **Techniques:** Combines Collective communication (`MPI_Bcast`, `MPI_Scatterv`, `MPI_Gatherv`) with Point-to-Point logical ring shifting.
 
 ### Core MPI Mechanisms Used
 * **Process Organization:** `MPI_Comm_split` is used to dynamically group processes based on the algorithm selected at runtime.
