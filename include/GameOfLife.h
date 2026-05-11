@@ -17,14 +17,11 @@ private:
      * @struct ProcessNeighbors
      * @brief Stores the MPI ranks of the 8 surrounding neighbors in the Cartesian grid.
      */
-    struct ProcessNeighbors {
-        int neighbors[8]; ///< Ranks of neighbors (Up, Down, Left, Right, UL, UR, DL, DR)
-    };
 
     std::vector<int> local_grid;    ///< 1D vector representing the 2D local grid including ghost cells
     int local_rows;                 ///< Number of rows in the local grid (excluding ghost cells)
     int local_cols;                 ///< Number of columns in the local grid (excluding ghost cells)
-    ProcessNeighbors neighbors;     ///< MPI ranks of the adjacent processes
+    int neighbors[8];               ///< Ranks of neighbors (Up, Down, Left, Right, UL, UR, DL, DR)
     MPI_Comm cart_comm;             ///< Cartesian communicator for the 2D grid
 
     /**
@@ -37,9 +34,21 @@ private:
 
     /**
      * @brief Determines the MPI ranks for all 8 adjacent and diagonal neighbors.
-     * @details Uses MPI_Cart_shift and coordinate math to populate the neighbors struct.
+     * @details Uses MPICore::get_cart_neighbors to populate the neighbors array.
      */
     void calculate_diagonal_neighbors();
+
+    /**
+     * @brief Demonstrates a classic MPI circular-wait deadlock scenario.
+     * @details Uses MPICore::send_recv_blocking. If buffers fill, processes wait indefinitely.
+     */
+    void exchange_boundaries_deadlock();
+
+    /**
+     * @brief Correctly exchanges ghost cells using non-blocking communication.
+     * @details Uses MPICore non-blocking wrappers to prevent deadlock.
+     */
+    void exchange_boundaries_nonblocking();
 
 public:
     /**
@@ -56,17 +65,7 @@ public:
      */
     void run_simulation(int generations);
 
-    /**
-     * @brief Demonstrates a classic MPI circular-wait deadlock scenario.
-     * @details Uses synchronous blocking MPI_Send/MPI_Recv. If buffers fill, processes wait indefinitely.
-     */
-    void exchange_boundaries_deadlock();
 
-    /**
-     * @brief Correctly exchanges ghost cells using non-blocking communication.
-     * @details Posts all MPI_Irecv and MPI_Isend requests, followed by MPI_Waitall to prevent deadlock.
-     */
-    void exchange_boundaries_nonblocking();
 };
 
 #endif
