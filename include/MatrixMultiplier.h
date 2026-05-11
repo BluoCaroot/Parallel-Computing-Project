@@ -16,6 +16,8 @@ private:
     std::vector<int> local_C;   ///< The resulting partial products computed by this process
 
     int local_rows;             ///< Number of rows in local_A
+    int global_M;               ///< Total number of rows in Matrix A
+    int global_K;               ///< Total number of columns in Matrix A / rows in Matrix B
     int global_cols;            ///< Total number of columns in the global matrices
     MPI_Comm comm;              ///< The MPI communicator used for ring shifting
 
