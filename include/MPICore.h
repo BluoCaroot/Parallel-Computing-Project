@@ -33,14 +33,6 @@ public:
      */
     static void finalize();
 
-    /**
-     * @brief Splits an existing communicator into logical subgroups.
-     * @param original_comm The communicator to split.
-     * @param color Processes with the same color are grouped into the same new communicator.
-     * @param key Controls rank assignment within the new communicator.
-     * @return The newly created MPI_Comm.
-     */
-    static MPI_Comm split_communicator(MPI_Comm original_comm, int color, int key);
 
     /**
      * @brief Creates a 2D logical Cartesian topology from a standard communicator.

@@ -15,11 +15,7 @@ void MPICore::finalize() {
     MPI_Finalize();
 }
 
-MPI_Comm MPICore::split_communicator(MPI_Comm original_comm, int color, int key) {
-    MPI_Comm new_world;
-    MPI_Comm_split(original_comm, color, key, &new_world);
-    return new_world;
-}
+
 
 MPI_Comm MPICore::create_cartesian_topology(MPI_Comm original_comm, int rows, int cols) {
     MPI_Comm cart;
@@ -69,7 +65,7 @@ void MPICore::gatherv(const void* send_buf, int send_count, MPI_Datatype send_ty
     MPI_Gatherv(send_buf, send_count, send_type, recv_buf, recv_counts, displacements, recv_type, root, comm);
 }
 
-void MPICore::get_cart_neighbors(MPI_Comm comm, int neighbors[8]) {
+void MPICore::  get_cart_neighbors(MPI_Comm comm, int neighbors[8]) {
     // 0: Up, 1: Down, 2: Left, 3: Right
     MPI_Cart_shift(comm, 0, 1, &neighbors[0], &neighbors[1]);
     MPI_Cart_shift(comm, 1, 1, &neighbors[2], &neighbors[3]);
