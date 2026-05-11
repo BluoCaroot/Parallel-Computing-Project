@@ -52,6 +52,81 @@ public:
     static MPI_Comm create_cartesian_topology(MPI_Comm original_comm, int rows, int cols);
 
     /**
+     * @brief Retrieves the rank of the current process within a communicator.
+     * @param comm The communicator.
+     * @return The rank of the process.
+     */
+    static int get_rank(MPI_Comm comm);
+
+    /**
+     * @brief Determines the MPI ranks for all 8 adjacent and diagonal neighbors in a 2D Cartesian topology.
+     * @param comm The Cartesian communicator.
+     * @param neighbors Array of 8 integers to store ranks (Up, Down, Left, Right, UL, UR, DL, DR).
+     */
+    static void get_cart_neighbors(MPI_Comm comm, int neighbors[8]);
+
+    /**
+     * @brief Performs a blocking send and receive.
+     * @param send_data Pointer to the data to send.
+     * @param send_count Number of elements to send.
+     * @param dest Destination rank.
+     * @param recv_data Pointer to the buffer for received data.
+     * @param recv_count Number of elements to receive.
+     * @param source Source rank.
+     * @param comm The communicator.
+     */
+    static void send_recv_blocking(void* send_data, int send_count, int dest,
+                                   void* recv_data, int recv_count, int source,
+                                   MPI_Comm comm);
+
+    /**
+     * @brief Posts a non-blocking receive.
+     * @param buf Pointer to the buffer for received data.
+     * @param count Number of elements to receive.
+     * @param type MPI datatype of the elements.
+     * @param source Source rank.
+     * @param tag Message tag.
+     * @param comm The communicator.
+     * @param request Pointer to the MPI_Request object.
+     */
+    static void irecv(void* buf, int count, MPI_Datatype type, int source, int tag, MPI_Comm comm, MPI_Request* request);
+
+    /**
+     * @brief Posts a non-blocking send.
+     * @param buf Pointer to the data to send.
+     * @param count Number of elements to send.
+     * @param type MPI datatype of the elements.
+     * @param dest Destination rank.
+     * @param tag Message tag.
+     * @param comm The communicator.
+     * @param request Pointer to the MPI_Request object.
+     */
+    static void isend(const void* buf, int count, MPI_Datatype type, int dest, int tag, MPI_Comm comm, MPI_Request* request);
+
+    /**
+     * @brief Waits for all non-blocking operations to complete.
+     * @param count Number of requests.
+     * @param requests Array of MPI_Request objects.
+     */
+    static void wait_all(int count, MPI_Request* requests);
+
+    /**
+     * @brief Creates and commits a vector MPI datatype.
+     * @param count Number of blocks.
+     * @param blocklength Number of elements in each block.
+     * @param stride Spacing between start of each block.
+     * @param oldtype Old MPI datatype.
+     * @return The newly created and committed MPI_Datatype.
+     */
+    static MPI_Datatype create_vector_type(int count, int blocklength, int stride, MPI_Datatype oldtype);
+
+    /**
+     * @brief Frees an MPI datatype.
+     * @param type Pointer to the MPI_Datatype to free.
+     */
+    static void free_type(MPI_Datatype* type);
+
+    /**
      * @brief Retrieves the current wall-clock time for benchmarking.
      * @return A double precision timestamp.
      */
