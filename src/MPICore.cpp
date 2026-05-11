@@ -1,6 +1,5 @@
 #include "MPICore.h"
 
-
 MPICore::ProcessInfo MPICore::init(int argc, char **argv) {
     MPI_Init(&argc, &argv);
     ProcessInfo info{};
@@ -41,6 +40,31 @@ int MPICore::get_rank(MPI_Comm comm) {
     int rank;
     MPI_Comm_rank(comm, &rank);
     return rank;
+}
+
+int MPICore::get_size(MPI_Comm comm) {
+    int size;
+    MPI_Comm_size(comm, &size);
+    return size;
+}
+
+void MPICore::abort(MPI_Comm comm, int error_code) {
+    MPI_Abort(comm, error_code);
+}
+
+void MPICore::broadcast(void* buffer, int count, MPI_Datatype type, int root, MPI_Comm comm) {
+    MPI_Bcast(buffer, count, type, root, comm);
+}
+
+void MPICore::scatterv(const void* send_buf, const int* send_counts, const int* displacements, MPI_Datatype send_type,
+                      void* recv_buf, int recv_count, MPI_Datatype recv_type, int root, MPI_Comm comm) {
+    MPI_Scatterv(send_buf, send_counts, displacements, send_type, recv_buf, recv_count, recv_type, root, comm);
+}
+
+void MPICore::gatherv(const void* send_buf, int send_count, MPI_Datatype send_type,
+                     void* recv_buf, const int* recv_counts, const int* displacements, MPI_Datatype recv_type,
+                     int root, MPI_Comm comm) {
+    MPI_Gatherv(send_buf, send_count, send_type, recv_buf, recv_counts, displacements, recv_type, root, comm);
 }
 
 void MPICore::get_cart_neighbors(MPI_Comm comm, int neighbors[8]) {
