@@ -49,7 +49,7 @@ void MatrixMultiplier::run_multiplication(const std::string& matA_file, const st
         DataUtils::save_matrix_to_file("data/result.txt", global_C, global_M, global_cols);
     }
 }
-
+// todo: optimize row_plan and k_plan and recv_counts and disps
 void MatrixMultiplier::distribute_matrices(const std::vector<int>& global_A, const std::vector<int>& global_B) {
     int rank = MPICore::get_rank(comm);
     int size = MPICore::get_size(comm);
@@ -80,7 +80,7 @@ void MatrixMultiplier::distribute_matrices(const std::vector<int>& global_A, con
     MPICore::scatterv(global_B.data(), send_counts.data(), disps.data(), MPI_INT,
                       local_B.data(), (int)local_B.size(), MPI_INT, 0, comm);
 }
-
+//todo: optmize k_plan
 void MatrixMultiplier::multiply_ring_algorithm() {
     int rank = MPICore::get_rank(comm);
     int size = MPICore::get_size(comm);
@@ -129,7 +129,7 @@ void MatrixMultiplier::multiply_ring_algorithm() {
         }
     }
 }
-
+// todo: optimize row_plan and recv_counts and disps
 void MatrixMultiplier::gather_results(std::vector<int>& global_C) {
     int rank = MPICore::get_rank(comm);
     int size = MPICore::get_size(comm);
