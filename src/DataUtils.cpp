@@ -1,5 +1,51 @@
-//
-// Created by bestc on 4/30/2026.
-//
+#include "DataUtils.h"
+#include <fstream>
+#include <stdexcept>
 
-#include "../include/DataUtils.h"
+DataUtils::DistributionPlan DataUtils::calculate_distribution(int total_elements, int num_procs) {
+    DistributionPlan plan;
+    plan.counts.assign(num_procs, total_elements / num_procs);
+    for (int i = 0; i < total_elements % num_procs; ++i)
+        plan.counts[i]++;
+    plan.displacements.resize(num_procs);
+    for (int i = 1; i < num_procs; ++i)
+        plan.displacements[i] = plan.displacements[i - 1] + plan.counts[i - 1];
+    return plan;
+}
+
+std::vector<int> DataUtils::load_matrix_from_file(const std::string& filepath, int& rows, int& cols) {
+    std::ifstream file(filepath);
+    if (!file.is_open()) {
+        throw std::runtime_error("Failed to open file: " + filepath);
+    }
+
+    if (!(file >> rows >> cols)) {
+        throw std::runtime_error("Failed to read dimensions from: " + filepath);
+    }
+
+    int total_elements = rows * cols;
+    std::vector<int> data(total_elements);
+
+    for (int i = 0; i < total_elements; ++i) {
+        if (!(file >> data[i])) {
+            throw std::runtime_error("Failed to read matrix data from: " + filepath);
+        }
+    }
+
+    return data;
+}
+
+void DataUtils::save_matrix_to_file(const std::string& filepath, const std::vector<int>& data, int rows, int cols) {
+    std::ofstream file(filepath);
+    if (!file.is_open()) {
+        throw std::runtime_error("Failed to open file for writing: " + filepath);
+    }
+
+    file << rows << " " << cols << "\n";
+    for (int i = 0; i < rows; ++i) {
+        for (int j = 0; j < cols; ++j) {
+            file << data[i * cols + j] << (j == cols - 1 ? "" : " ");
+        }
+        file << "\n";
+    }
+}
