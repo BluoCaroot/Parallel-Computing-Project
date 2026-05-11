@@ -182,6 +182,59 @@ public:
     static void free_type(MPI_Datatype* type);
 
     /**
+     * @brief Creates a division of processors in a cartesian grid.
+     * @param nnodes Number of nodes in a grid.
+     * @param ndims Number of cartesian dimensions.
+     * @param dims Array specifying the number of nodes in each dimension.
+     */
+    static void create_dims(int nnodes, int ndims, int* dims);
+
+    /**
+     * @brief Retrieves the coordinates of a process in a Cartesian communicator.
+     * @param comm Cartesian communicator.
+     * @param rank Rank of the process.
+     * @param maxdims Number of dimensions.
+     * @param coords Array to store the coordinates.
+     */
+    static void get_cart_coords(MPI_Comm comm, int rank, int maxdims, int* coords);
+
+    /**
+     * @brief Retrieves the dimensions of a Cartesian communicator.
+     * @param comm Cartesian communicator.
+     * @param maxdims Number of dimensions.
+     * @param dims Array to store the dimensions.
+     */
+    static void get_cart_dims(MPI_Comm comm, int maxdims, int* dims);
+
+    /**
+     * @brief Performs a standard blocking send.
+     * @param buf Pointer to the data to send.
+     * @param count Number of elements to send.
+     * @param type MPI datatype.
+     * @param dest Destination rank.
+     * @param tag Message tag.
+     * @param comm The communicator.
+     */
+    static void send(const void* buf, int count, MPI_Datatype type, int dest, int tag, MPI_Comm comm);
+
+    /**
+     * @brief Performs a standard blocking receive.
+     * @param buf Pointer to the buffer for received data.
+     * @param count Number of elements to receive.
+     * @param type MPI datatype.
+     * @param source Source rank.
+     * @param tag Message tag.
+     * @param comm The communicator.
+     */
+    static void recv(void* buf, int count, MPI_Datatype type, int source, int tag, MPI_Comm comm);
+
+    /**
+     * @brief Pauses execution for a specified number of milliseconds.
+     * @param milliseconds Duration to sleep.
+     */
+    static void sleep_ms(int milliseconds);
+
+    /**
      * @brief Retrieves the current wall-clock time for benchmarking.
      * @return A double precision timestamp.
      */

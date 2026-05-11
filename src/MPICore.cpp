@@ -1,4 +1,6 @@
 #include "MPICore.h"
+#include <thread>
+#include <chrono>
 
 MPICore::ProcessInfo MPICore::init(int argc, char **argv) {
     MPI_Init(&argc, &argv);
@@ -120,6 +122,32 @@ MPI_Datatype MPICore::create_vector_type(int count, int blocklength, int stride,
 
 void MPICore::free_type(MPI_Datatype* type) {
     MPI_Type_free(type);
+}
+
+void MPICore::create_dims(int nnodes, int ndims, int* dims) {
+    MPI_Dims_create(nnodes, ndims, dims);
+}
+
+void MPICore::get_cart_coords(MPI_Comm comm, int rank, int maxdims, int* coords) {
+    MPI_Cart_coords(comm, rank, maxdims, coords);
+}
+
+void MPICore::get_cart_dims(MPI_Comm comm, int maxdims, int* dims) {
+    int periods[2];
+    int coords[2];
+    MPI_Cart_get(comm, maxdims, dims, periods, coords);
+}
+
+void MPICore::send(const void* buf, int count, MPI_Datatype type, int dest, int tag, MPI_Comm comm) {
+    MPI_Send(buf, count, type, dest, tag, comm);
+}
+
+void MPICore::recv(void* buf, int count, MPI_Datatype type, int source, int tag, MPI_Comm comm) {
+    MPI_Recv(buf, count, type, source, tag, comm, MPI_STATUS_IGNORE);
+}
+
+void MPICore::sleep_ms(int milliseconds) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(milliseconds));
 }
 
 double MPICore::stop_timer(double start_time) {
