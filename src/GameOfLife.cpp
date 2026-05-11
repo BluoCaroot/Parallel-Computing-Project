@@ -1,11 +1,13 @@
 #include "GameOfLife.h"
 #include "MPICore.h"
+#include "DataUtils.h"
 #include <random>
 #include <ctime>
 #include <iostream>
+#include <cstdlib>
 
-GameOfLife::GameOfLife(int local_r, int local_c, MPI_Comm comm)
-    : local_rows(local_r), local_cols(local_c), cart_comm(comm) {
+GameOfLife::GameOfLife(int local_r, int local_c, int global_r, int global_c, MPI_Comm comm)
+    : local_rows(local_r), local_cols(local_c), global_rows(global_r), global_cols(global_c), cart_comm(comm) {
     
     local_grid.assign((local_rows + 2) * (local_cols + 2), 0);
 
@@ -45,9 +47,72 @@ int GameOfLife::compute_next_state(int r, int c) {
     }
 }
 
+void GameOfLife::print_grid(int generation) {
+    int rank = MPICore::get_rank(cart_comm);
+    int size = MPICore::get_size(cart_comm);
+
+    int dims[2];
+    MPICore::get_cart_dims(cart_comm, 2, dims);
+
+    // Extract active local cells (without ghost cells)
+    std::vector<int> active_cells(local_rows * local_cols);
+    for (int r = 0; r < local_rows; ++r) {
+        for (int c = 0; c < local_cols; ++c) {
+            active_cells[r * local_cols + c] = local_grid[(r + 1) * (local_cols + 2) + (c + 1)];
+        }
+    }
+
+    if (rank == 0) {
+        std::vector<int> global_grid_data(global_rows * global_cols, 0);
+
+        auto row_plan = DataUtils::calculate_distribution(global_rows, dims[0]);
+        auto col_plan = DataUtils::calculate_distribution(global_cols, dims[1]);
+
+        // Place rank 0's own data
+        for (int r = 0; r < local_rows; ++r) {
+            for (int c = 0; c < local_cols; ++c) {
+                global_grid_data[r * global_cols + c] = active_cells[r * local_cols + c];
+            }
+        }
+
+        // Receive from others
+        for (int i = 1; i < size; ++i) {
+            int other_coords[2];
+            MPICore::get_cart_coords(cart_comm, i, 2, other_coords);
+            int other_rows = row_plan.counts[other_coords[0]];
+            int other_cols = col_plan.counts[other_coords[1]];
+            std::vector<int> other_data(other_rows * other_cols);
+            
+            MPICore::recv(other_data.data(), other_rows * other_cols, MPI_INT, i, 0, cart_comm);
+
+            int start_r = row_plan.displacements[other_coords[0]];
+            int start_c = col_plan.displacements[other_coords[1]];
+
+            for (int r = 0; r < other_rows; ++r) {
+                for (int c = 0; c < other_cols; ++c) {
+                    global_grid_data[(start_r + r) * global_cols + (start_c + c)] = other_data[r * other_cols + c];
+                }
+            }
+        }
+
+
+        std::cout << "Generation: " << generation << "\n";
+        for (int r = 0; r < global_rows; ++r) {
+            for (int c = 0; c < global_cols; ++c) {
+                std::cout << (global_grid_data[r * global_cols + c] ? "#" : ".");
+            }
+            std::cout << "\n";
+        }
+        std::cout << std::flush;
+
+    } else {
+        MPICore::send(active_cells.data(), (int)active_cells.size(), MPI_INT, 0, 0, cart_comm);
+    }
+}
+
 void GameOfLife::exchange_boundaries_deadlock() {
     int stride = local_cols + 2;
-    
+
     // Naive implementation: Sequential blocking Send/Recv for each neighbor
     // This will deadlock if the message size exceeds the MPI system buffer.
     for (int i = 0; i < 8; ++i) {
@@ -117,8 +182,14 @@ void GameOfLife::exchange_boundaries_nonblocking() {
 void GameOfLife::run_simulation(int generations) {
     int stride = local_cols + 2;
     std::vector<int> next_grid((local_rows + 2) * (local_cols + 2), 0);
+    bool is_small = (global_rows <= 40 && global_cols <= 40);
 
     for (int g = 0; g < generations; ++g) {
+        if (is_small) {
+            print_grid(g);
+            MPICore::sleep_ms(400);
+        }
+
         exchange_boundaries_nonblocking();
 
         for (int r = 1; r <= local_rows; ++r) {
@@ -127,5 +198,9 @@ void GameOfLife::run_simulation(int generations) {
             }
         }
         local_grid = next_grid;
+    }
+
+    if (is_small) {
+        print_grid(generations);
     }
 }
