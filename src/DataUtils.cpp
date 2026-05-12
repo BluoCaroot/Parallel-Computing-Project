@@ -13,6 +13,19 @@ DataUtils::DistributionPlan DataUtils::calculate_distribution(int total_elements
     return plan;
 }
 
+DataUtils::LocalDistributionPlan DataUtils::get_local_distribution(int total_elements, int num_procs, int rank) {
+    LocalDistributionPlan plan;
+    int base = total_elements / num_procs;
+    int remainder = total_elements % num_procs;
+    plan.count = base + (rank < remainder ? 1 : 0);
+    if (rank < remainder) {
+        plan.displacement = rank * (base + 1);
+    } else {
+        plan.displacement = remainder * (base + 1) + (rank - remainder) * base;
+    }
+    return plan;
+}
+
 std::vector<int> DataUtils::load_matrix_from_file(const std::string& filepath, int& rows, int& cols) {
     std::ifstream file(filepath);
     if (!file.is_open()) {

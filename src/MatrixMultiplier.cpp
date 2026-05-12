@@ -5,7 +5,7 @@
 #include <vector>
 #include <iostream>
 
-MatrixMultiplier::MatrixMultiplier(MPI_Comm comm) 
+MatrixMultiplier::MatrixMultiplier(MPI_Comm comm)
     : comm(comm), local_rows(0), global_M(0), global_K(0), global_cols(0) {}
 
 void MatrixMultiplier::run_multiplication(const std::string& matA_file, const std::string& matB_file) {
@@ -49,43 +49,57 @@ void MatrixMultiplier::run_multiplication(const std::string& matA_file, const st
         DataUtils::save_matrix_to_file("data/result.txt", global_C, global_M, global_cols);
     }
 }
-// todo: optimize row_plan and k_plan and recv_counts and disps
 void MatrixMultiplier::distribute_matrices(const std::vector<int>& global_A, const std::vector<int>& global_B) {
     int rank = MPICore::get_rank(comm);
     int size = MPICore::get_size(comm);
 
-    auto row_plan = DataUtils::calculate_distribution(global_M, size);
-    auto k_plan = DataUtils::calculate_distribution(global_K, size);
-
-    local_rows = row_plan.counts[rank];
+    auto my_row_info = DataUtils::get_local_distribution(global_M, size, rank);
+    local_rows = my_row_info.count;
     local_A.resize(local_rows * global_K);
 
-    std::vector<int> send_counts(size), disps(size);
+    auto my_k_info = DataUtils::get_local_distribution(global_K, size, rank);
+    local_B.resize(my_k_info.count * global_cols);
+
+    std::vector<int> send_counts_A, disps_A;
+    std::vector<int> send_counts_B, disps_B;
+
     if (rank == 0) {
+        send_counts_A.resize(size);
+        disps_A.resize(size);
+        send_counts_B.resize(size);
+        disps_B.resize(size);
+
         for (int i = 0; i < size; ++i) {
-            send_counts[i] = row_plan.counts[i] * global_K;
-            disps[i] = row_plan.displacements[i] * global_K;
+            auto target_row_info = DataUtils::get_local_distribution(global_M, size, i);
+            send_counts_A[i] = target_row_info.count * global_K;
+            disps_A[i] = target_row_info.displacement * global_K;
+
+            auto target_k_info = DataUtils::get_local_distribution(global_K, size, i);
+            send_counts_B[i] = target_k_info.count * global_cols;
+            disps_B[i] = target_k_info.displacement * global_cols;
         }
     }
-    MPICore::scatterv(global_A.data(), send_counts.data(), disps.data(), MPI_INT,
+
+    int* sc_A_ptr = rank == 0 ? send_counts_A.data() : nullptr;
+    int* d_A_ptr  = rank == 0 ? disps_A.data() : nullptr;
+    int* sc_B_ptr = rank == 0 ? send_counts_B.data() : nullptr;
+    int* d_B_ptr  = rank == 0 ? disps_B.data() : nullptr;
+
+    const int* gA_ptr = rank == 0 ? global_A.data() : nullptr;
+    const int* gB_ptr = rank == 0 ? global_B.data() : nullptr;
+
+    MPICore::scatterv(gA_ptr, sc_A_ptr, d_A_ptr, MPI_INT,
                       local_A.data(), (int)local_A.size(), MPI_INT, 0, comm);
 
-    local_B.resize(k_plan.counts[rank] * global_cols);
-    if (rank == 0) {
-        for (int i = 0; i < size; ++i) {
-            send_counts[i] = k_plan.counts[i] * global_cols;
-            disps[i] = k_plan.displacements[i] * global_cols;
-        }
-    }
-    MPICore::scatterv(global_B.data(), send_counts.data(), disps.data(), MPI_INT,
+    MPICore::scatterv(gB_ptr, sc_B_ptr, d_B_ptr, MPI_INT,
                       local_B.data(), (int)local_B.size(), MPI_INT, 0, comm);
 }
-//todo: optmize k_plan
+
+
 void MatrixMultiplier::multiply_ring_algorithm() {
     int rank = MPICore::get_rank(comm);
     int size = MPICore::get_size(comm);
 
-    auto k_plan = DataUtils::calculate_distribution(global_K, size);
     local_C.assign(local_rows * global_cols, 0);
 
     std::vector<int> current_B = local_B;
@@ -94,10 +108,11 @@ void MatrixMultiplier::multiply_ring_algorithm() {
 
     for (int step = 0; step < size; ++step) {
         int b_rank = (rank - step + size) % size;
-        int K_j = k_plan.counts[b_rank];
-        int K_offset = k_plan.displacements[b_rank];
 
-        // Multiplication: local_C += A_{i, b_rank} * B_{b_rank}
+        auto current_b_info = DataUtils::get_local_distribution(global_K, size, b_rank);
+        int K_j = current_b_info.count;
+        int K_offset = current_b_info.displacement;
+
         if (local_rows > 0 && K_j > 0) {
             for (int r = 0; r < local_rows; ++r) {
                 int r_off = r * global_K + K_offset;
@@ -114,10 +129,11 @@ void MatrixMultiplier::multiply_ring_algorithm() {
 
         if (step < size - 1) {
             int next_b_rank = (rank - (step + 1) + size) % size;
-            std::vector<int> next_B(k_plan.counts[next_b_rank] * global_cols);
+
+            auto next_b_info = DataUtils::get_local_distribution(global_K, size, next_b_rank);
+            std::vector<int> next_B(next_b_info.count * global_cols);
             
             MPI_Request reqs[2];
-            // Use current_B.data() safely even if empty
             void* send_ptr = current_B.empty() ? nullptr : current_B.data();
             void* recv_ptr = next_B.empty() ? nullptr : next_B.data();
 
@@ -129,23 +145,28 @@ void MatrixMultiplier::multiply_ring_algorithm() {
         }
     }
 }
-// todo: optimize row_plan and recv_counts and disps
 void MatrixMultiplier::gather_results(std::vector<int>& global_C) {
     int rank = MPICore::get_rank(comm);
     int size = MPICore::get_size(comm);
 
-    auto row_plan = DataUtils::calculate_distribution(global_M, size);
-
-    std::vector<int> recv_counts(size), disps(size);
-    for (int i = 0; i < size; ++i) {
-        recv_counts[i] = row_plan.counts[i] * global_cols;
-        disps[i] = row_plan.displacements[i] * global_cols;
-    }
+    std::vector<int> recv_counts, disps;
 
     if (rank == 0) {
         global_C.resize(global_M * global_cols);
+        recv_counts.resize(size);
+        disps.resize(size);
+
+        for (int i = 0; i < size; ++i) {
+            auto row_info = DataUtils::get_local_distribution(global_M, size, i);
+            recv_counts[i] = row_info.count * global_cols;
+            disps[i] = row_info.displacement * global_cols;
+        }
     }
 
+    int* rc_ptr = rank == 0 ? recv_counts.data() : nullptr;
+    int* d_ptr  = rank == 0 ? disps.data() : nullptr;
+    int* gC_ptr = rank == 0 ? global_C.data() : nullptr;
+
     MPICore::gatherv(local_C.data(), (int)local_C.size(), MPI_INT,
-                     global_C.data(), recv_counts.data(), disps.data(), MPI_INT, 0, comm);
+                     gC_ptr, rc_ptr, d_ptr, MPI_INT, 0, comm);
 }

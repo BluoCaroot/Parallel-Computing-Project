@@ -18,6 +18,23 @@ public:
         std::vector<int> counts;        ///< Array specifying the number of elements to send/receive per process.
         std::vector<int> displacements; ///< Array specifying the starting index for each process's chunk.
     };
+    /**
+     * @struct LocalDistributionPlan
+     * @brief Holds the exact count and starting offset for a single MPI process.
+     */
+    struct LocalDistributionPlan {
+        int count;        ///< The number of elements to send/receive for the current process.
+        int displacement; ///< The starting index in the global array for the current process.
+    };
+
+    /**
+     * @brief Calculates the local element count and starting offset for a specific MPI rank in O(1) time.
+     * @param total_elements The total size of the global dataset.
+     * @param num_procs The number of MPI processes dividing the data.
+     * @param rank The ID of the specific MPI process requesting its allocation.
+     * @return A LocalDistributionPlan containing the exact count and displacement.
+     */
+    static LocalDistributionPlan get_local_distribution(int total_elements, int num_procs, int rank);
 
     /**
      * @brief Calculates a balanced distribution plan for uneven data sizes.
