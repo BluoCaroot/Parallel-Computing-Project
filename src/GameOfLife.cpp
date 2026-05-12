@@ -197,7 +197,7 @@ void GameOfLife::run_simulation(int generations) {
                 next_grid[r * stride + c] = compute_next_state(r, c);
             }
         }
-        local_grid = std::move(next_grid);
+        local_grid = next_grid;
     }
 
     if (is_small) {
