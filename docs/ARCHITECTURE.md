@@ -16,13 +16,13 @@ The global grid is treated as a 2D surface. Instead of simple row-wise slicing, 
 
 ### B. Logical Ring Algorithm (Matrix Multiplication)
 To multiply $C = A \times B$ in a distributed environment:
--   **Decomposition**: Matrix $A$ is sliced horizontally (rows). Matrix $B$ is initially sliced vertically (columns).
--   **The Ring**: Processes are organized in a logical ring. In each step, a process computes a partial product using its local slice of $A$ and the current block of $B$.
+-   **Decomposition**: Both Matrix $A$ and Matrix $B$ are sliced horizontally (row).
+-   **The Ring**:  Processes are organized in a logical ring. Each process holds its fixed slice of $A$ and a rotating slice of $B$.
 -   **Data Shifting**: After computation, the block of $B$ is shifted to the "Right" neighbor while receiving a new block from the "Left" neighbor.
 -   **Benefit**: This algorithm is highly memory-efficient as no single process ever needs to hold the entire Matrix $B$ simultaneously during the computation phase.
 
 ## 3. Load Balancing
 The engine employs a **Static Fair-Share** distribution strategy via `DataUtils::calculate_distribution`:
 1.  **Base Allocation**: $Total / Size$.
-2.  **Remainder Handling**: The first $N \pmod{Size}$ processes receive one extra element.
+2.  **Remainder Handling**: The first $Total \pmod{Size}$ processes receive one extra element.
 3.  **Impact**: This ensures that even with non-divisible dimensions (e.g., 1000 rows on 3 processes), the workload difference is at most 1 unit, preventing significant synchronization bottlenecks (stragglers).
